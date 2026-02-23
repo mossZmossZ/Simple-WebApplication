@@ -6,21 +6,18 @@ export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const sendUpdate = async () => {
-        const state = await realtimeStore.getState();
-        const data = JSON.stringify(state);
-        // Proper SSE format: each message line starts with "data: "
-        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+      const sendUpdate = () => {
+        const state = realtimeStore.getState();
+        const data = `data: ${JSON.stringify(state)}\n\n`;
+        controller.enqueue(encoder.encode(data));
       };
 
       // Send initial state
-      await sendUpdate();
+      sendUpdate();
 
       // Subscribe to updates
       const unsubscribe = realtimeStore.subscribe(() => {
-        sendUpdate().catch((err) => {
-          console.error('Error sending SSE update', err);
-        });
+        sendUpdate();
       });
 
       // Keep connection alive with periodic pings
@@ -54,19 +51,19 @@ export async function POST(request: NextRequest) {
 
     // Handle different actions
     if (action === 'increment') {
-      await realtimeStore.incrementCounter();
+      realtimeStore.incrementCounter();
     } else if (action === 'decrement') {
-      await realtimeStore.decrementCounter();
+      realtimeStore.decrementCounter();
     } else if (action === 'reset') {
-      await realtimeStore.resetCounter();
+      realtimeStore.resetCounter();
     } else if (action === 'vote' && optionId) {
-      await realtimeStore.addVote(optionId);
+      realtimeStore.addVote(optionId);
     } else if (action === 'chat' && username && message) {
-      await realtimeStore.addChatMessage(username, message);
+      realtimeStore.addChatMessage(username, message);
     }
 
     // Return current state
-    const state = await realtimeStore.getState();
+    const state = realtimeStore.getState();
     return Response.json(state);
   } catch (error) {
     return Response.json({ error: 'Invalid request' }, { status: 400 });
